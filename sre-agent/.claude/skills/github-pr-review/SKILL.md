@@ -6,6 +6,24 @@ allowed-tools: Bash(python *)
 
 # GitHub PR Review
 
+## Sandbox Environment
+
+You are running inside an isolated sandbox. Three ways to interact with GitHub, all authenticated automatically via the credential proxy:
+
+1. **Native git** — `git clone`, `git commit`, `git push` work with HTTPS URLs. A credential helper fetches tokens from the credential-resolver transparently.
+2. **gh CLI** — `gh pr view`, `gh issue list`, etc. authenticate via `GITHUB_BASE_URL`.
+3. **Python scripts** (below) — REST API wrappers for PR reviews, file reads, and code search.
+
+```bash
+# Native git (credentials injected automatically)
+git clone https://github.com/acme/webapp.git
+cd webapp && git checkout -b fix/bug && git push -u origin fix/bug
+
+# gh CLI
+gh pr view acme/webapp --json title,body
+gh issue list -R acme/webapp
+```
+
 ## Authentication
 
 **IMPORTANT**: Credentials are injected automatically by a proxy layer. Do NOT check for `GITHUB_TOKEN` in environment variables. Just run the scripts directly; authentication is handled transparently.
