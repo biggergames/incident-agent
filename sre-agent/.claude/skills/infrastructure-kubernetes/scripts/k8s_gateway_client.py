@@ -84,9 +84,7 @@ def execute_command(
         )
 
     if response.status_code >= 400:
-        raise RuntimeError(
-            f"k8s-gateway error {response.status_code}: {response.text}"
-        )
+        raise RuntimeError(f"k8s-gateway error {response.status_code}: {response.text}")
 
     data = response.json()
     if not data.get("ok"):

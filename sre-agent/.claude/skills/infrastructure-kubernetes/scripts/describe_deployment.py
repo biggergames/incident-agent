@@ -202,9 +202,7 @@ def main():
             for rs in sorted(
                 rs_list.items,
                 key=lambda r: int(
-                    r.metadata.annotations.get(
-                        "deployment.kubernetes.io/revision", "0"
-                    )
+                    r.metadata.annotations.get("deployment.kubernetes.io/revision", "0")
                 ),
                 reverse=True,
             )[
