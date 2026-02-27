@@ -102,6 +102,11 @@ COPY git-credential-helper.sh /usr/local/bin/git-credential-incidentfox
 # --no-cache: Don't cache downloads (keeps image size down)
 RUN uv pip install --system --no-cache .
 
+# Trust credential-resolver's self-signed TLS cert so gh CLI can connect via HTTPS.
+# The cert is shared between credential-resolver (serves HTTPS) and sandbox (trusts it).
+COPY credential-proxy/certs/credential-resolver.crt /usr/local/share/ca-certificates/credential-resolver.crt
+RUN update-ca-certificates
+
 # Create non-root user and workspace directory
 RUN useradd -m -u 1000 agent && \
     mkdir -p /workspace /home/agent/.kube /home/agent/.aws && \

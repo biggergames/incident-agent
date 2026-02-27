@@ -656,6 +656,11 @@ static_resources:
                                         "name": "K8S_GATEWAY_URL",
                                         "value": f"http://incidentfox-k8s-gateway.{self.namespace}.svc.cluster.local:8085",
                                     },
+                                    # gh CLI: route HTTPS API calls through credential-resolver
+                                    {
+                                        "name": "GH_HOST",
+                                        "value": f"credential-resolver-svc.{cred_resolver_ns}.svc.cluster.local:8443",
+                                    },
                                     # RAPTOR knowledge base: internal K8s service (no auth needed)
                                     {
                                         "name": "RAPTOR_URL",

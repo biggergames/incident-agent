@@ -98,6 +98,17 @@ def _get_github_app_token(creds: dict) -> str | None:
         return None
 
 
+async def _resolve_github_token(creds: dict) -> str | None:
+    """Resolve GitHub API token: prefer App installation token, fall back to PAT."""
+    import asyncio
+
+    token = await asyncio.to_thread(_get_github_app_token, creds)
+    if token:
+        logger.info("Using GitHub App installation token")
+        return token
+    return creds.get("api_key")
+
+
 # JWT validation mode: "strict" (require valid JWT) or "permissive" (allow missing JWT for local dev)
 JWT_MODE = os.getenv("JWT_MODE", "strict")
 
@@ -763,7 +774,6 @@ async def git_proxy(path: str, request: Request):
     its JWT (which it already possesses). This endpoint validates the JWT and
     injects real GitHub credentials when forwarding to github.com.
     """
-    import asyncio
     import base64
 
     import httpx
@@ -804,9 +814,7 @@ async def git_proxy(path: str, request: Request):
     if not creds or not is_integration_configured("github", creds):
         raise HTTPException(status_code=404, detail="GitHub integration not configured")
 
-    api_token = await asyncio.to_thread(_get_github_app_token, creds)
-    if not api_token:
-        api_token = creds.get("api_key")
+    api_token = await _resolve_github_token(creds)
     if not api_token:
         raise HTTPException(status_code=404, detail="GitHub integration not configured")
 
@@ -1259,15 +1267,7 @@ async def github_proxy(path: str, request: Request):
         )
 
     # Resolve the API token: GitHub App (preferred) or PAT fallback
-    # Use asyncio.to_thread to avoid blocking the event loop when generating
-    # a new GitHub App token (cache misses involve a sync HTTP call)
-    import asyncio
-
-    api_token = await asyncio.to_thread(_get_github_app_token, creds)
-    if api_token:
-        logger.info("GitHub proxy: using GitHub App installation token")
-    else:
-        api_token = creds.get("api_key")
+    api_token = await _resolve_github_token(creds)
     if not api_token:
         logger.error(f"GitHub: no api_key or App credentials for tenant={tenant_id}")
         raise HTTPException(
@@ -1320,6 +1320,22 @@ async def github_proxy(path: str, request: Request):
     except httpx.RequestError as e:
         logger.error(f"GitHub request error: {e}")
         raise HTTPException(status_code=502, detail=f"GitHub request failed: {e}")
+
+
+# GitHub Enterprise-style aliases — gh CLI sends requests to /api/v3/... and /api/graphql
+@app.api_route(
+    "/api/v3/{path:path}",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+)
+async def github_api_v3_proxy(path: str, request: Request):
+    """Alias for /github/ — gh CLI sends REST API requests to /api/v3/..."""
+    return await github_proxy(path, request)
+
+
+@app.api_route("/api/graphql", methods=["POST"])
+async def github_graphql_proxy(request: Request):
+    """Alias for /github/graphql — gh CLI GraphQL endpoint."""
+    return await github_proxy("graphql", request)
 
 
 @app.api_route(
@@ -2428,6 +2444,15 @@ async def extract_tenant_context(request: Request) -> tuple[str, str, str]:
     """
     jwt_token = request.headers.get("x-sandbox-jwt", "")
 
+    # Also accept JWT from Authorization header (Bearer or token prefix)
+    # This lets gh CLI and curl use standard auth patterns.
+    if not jwt_token:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            jwt_token = auth_header[7:]
+        elif auth_header.startswith("token "):
+            jwt_token = auth_header[6:]
+
     # Try to validate JWT
     claims = validate_sandbox_jwt(jwt_token)
 
@@ -2538,6 +2563,7 @@ def build_auth_headers(integration_id: str, creds: dict) -> dict[str, str]:
 
     elif integration_id == "github":
         # GitHub: prefer App installation token, fall back to PAT
+        # async version: _resolve_github_token()
         token = _get_github_app_token(creds) or creds.get("api_key", "")
         return {"Authorization": f"Bearer {token}"}
 
