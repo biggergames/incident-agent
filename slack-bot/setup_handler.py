@@ -1083,8 +1083,6 @@ def handle_k8s_saas_add_cluster_submission(ack, body, client, view):
         )
         return
 
-    ack()
-
     try:
         config_client = get_config_client()
 
@@ -1107,20 +1105,26 @@ def handle_k8s_saas_add_cluster_submission(ack, body, client, view):
             entry_point=entry_point,
         )
 
-        # Update the modal to show the Helm command
-        client.views_update(
-            view_id=body.get("view", {}).get("id"),
-            view=modal,
-        )
+        # Update the modal in-place via ack response_action
+        ack(response_action="update", view=modal)
         logger.info(f"Created K8s cluster {cluster_name} for team {team_id}")
 
     except Exception as e:
         error_msg = str(e)
         if "already exists" in error_msg.lower():
-            # Show error in modal
             logger.warning(f"Cluster name conflict for team {team_id}: {cluster_name}")
+            ack(
+                response_action="errors",
+                errors={"cluster_name": "A cluster with this name already exists."},
+            )
         else:
             logger.error(f"Failed to create K8s cluster: {e}", exc_info=True)
+            ack(
+                response_action="errors",
+                errors={
+                    "cluster_name": "Failed to create cluster. Please try again."
+                },
+            )
 
 
 def handle_k8s_saas_remove_cluster(ack, body, client):
