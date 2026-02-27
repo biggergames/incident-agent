@@ -75,7 +75,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: autoscaler
-              image: {{ .Values.services.sandboxCleanup.image | default "registry.k8s.io/kubectl:v1.31.0" }}
+              image: {{ .Values.services.sandboxCleanup.image | default "bitnami/kubectl:latest" }}
               resources:
                 requests:
                   cpu: "10m"
