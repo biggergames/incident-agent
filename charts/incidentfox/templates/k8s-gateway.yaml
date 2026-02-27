@@ -60,8 +60,8 @@ spec:
               value: {{ .Values.services.k8sGateway.heartbeatIntervalSeconds | quote }}
             - name: COMMAND_TIMEOUT_SECONDS
               value: {{ .Values.services.k8sGateway.commandTimeoutSeconds | quote }}
-            # Config service URL for token validation
-            - name: CONFIG_SERVICE_URL
+            # Config service URL for token validation (K8S_GATEWAY_ prefix required by pydantic-settings)
+            - name: K8S_GATEWAY_CONFIG_SERVICE_URL
               value: {{ printf "http://incidentfox-config-service.%s.svc.cluster.local:%d" .Values.namespace (int .Values.services.configService.servicePort) | quote }}
           {{- if .Values.services.k8sGateway.livenessProbe.enabled }}
           livenessProbe:
