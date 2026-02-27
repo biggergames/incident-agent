@@ -13,30 +13,56 @@ description: Kubernetes debugging methodology and scripts. Use for pod crashes, 
 - FailedScheduling → No nodes with enough resources
 - CrashLoopBackOff → Container crashing repeatedly
 
+## Remote Clusters (k8s-gateway)
+
+When the team has deployed the IncidentFox k8s-agent to their clusters, you can query remote clusters via the k8s-gateway. **Always start by listing available clusters:**
+
+```bash
+python .claude/skills/infrastructure-kubernetes/scripts/list_clusters.py
+```
+
+Then pass `--cluster-id <CLUSTER_ID>` to any gateway-capable script:
+```bash
+python .claude/skills/infrastructure-kubernetes/scripts/list_pods.py -n production --cluster-id abc123
+```
+
+**Gateway-capable scripts:** list_pods, get_events, get_logs, describe_pod, describe_deployment, list_namespaces.
+**Direct-only scripts (require in-cluster access):** describe_node, get_resources.
+
+If no `--cluster-id` is given, scripts use direct K8s API access (in-cluster service account or kubeconfig).
+
 ## Available Scripts
 
 All scripts are in `.claude/skills/infrastructure-kubernetes/scripts/`
 
+### list_clusters.py - Discover available remote clusters
+```bash
+python .claude/skills/infrastructure-kubernetes/scripts/list_clusters.py
+python .claude/skills/infrastructure-kubernetes/scripts/list_clusters.py --json
+```
+
 ### list_pods.py - List pods with status
 ```bash
-python .claude/skills/infrastructure-kubernetes/scripts/list_pods.py -n <namespace> [--label <selector>]
+python .claude/skills/infrastructure-kubernetes/scripts/list_pods.py -n <namespace> [--label <selector>] [--cluster-id <id>]
 
 # Examples:
 python .claude/skills/infrastructure-kubernetes/scripts/list_pods.py -n otel-demo
 python .claude/skills/infrastructure-kubernetes/scripts/list_pods.py -n otel-demo --label app.kubernetes.io/name=payment
+python .claude/skills/infrastructure-kubernetes/scripts/list_pods.py -n production --cluster-id abc123
 ```
 
 ### get_events.py - Get pod events (USE FIRST!)
 ```bash
-python .claude/skills/infrastructure-kubernetes/scripts/get_events.py <pod-name> -n <namespace>
+python .claude/skills/infrastructure-kubernetes/scripts/get_events.py <pod-name> -n <namespace> [--cluster-id <id>]
 
-# Example:
+# Examples:
 python .claude/skills/infrastructure-kubernetes/scripts/get_events.py payment-7f8b9c6d5-x2k4m -n otel-demo
+python .claude/skills/infrastructure-kubernetes/scripts/get_events.py payment-7f8b9c6d5-x2k4m -n production --cluster-id abc123
 ```
 
 ### get_logs.py - Get pod logs
 ```bash
-python .claude/skills/infrastructure-kubernetes/scripts/get_logs.py <pod-name> -n <namespace> [--tail N] [--container NAME]
+python .claude/skills/infrastructure-kubernetes/scripts/get_logs.py <pod-name> -n <namespace> [--tail N] [--container NAME] [--cluster-id <id>]
 
 # Examples:
 python .claude/skills/infrastructure-kubernetes/scripts/get_logs.py payment-7f8b9c6d5-x2k4m -n otel-demo --tail 100
@@ -45,23 +71,28 @@ python .claude/skills/infrastructure-kubernetes/scripts/get_logs.py payment-7f8b
 
 ### describe_pod.py - Detailed pod info
 ```bash
-python .claude/skills/infrastructure-kubernetes/scripts/describe_pod.py <pod-name> -n <namespace>
-```
-
-### get_resources.py - Resource usage vs limits
-```bash
-python .claude/skills/infrastructure-kubernetes/scripts/get_resources.py <pod-name> -n <namespace>
+python .claude/skills/infrastructure-kubernetes/scripts/describe_pod.py <pod-name> -n <namespace> [--cluster-id <id>]
 ```
 
 ### describe_deployment.py - Deployment status and rollout history
 ```bash
-python .claude/skills/infrastructure-kubernetes/scripts/describe_deployment.py <deployment-name> -n <namespace>
+python .claude/skills/infrastructure-kubernetes/scripts/describe_deployment.py <deployment-name> -n <namespace> [--cluster-id <id>]
 
 # Example:
 python .claude/skills/infrastructure-kubernetes/scripts/describe_deployment.py payment -n otel-demo
 ```
 
-### describe_node.py - Node status, conditions, and resource usage
+### list_namespaces.py - List all namespaces
+```bash
+python .claude/skills/infrastructure-kubernetes/scripts/list_namespaces.py [--cluster-id <id>]
+```
+
+### get_resources.py - Resource usage vs limits (direct-only)
+```bash
+python .claude/skills/infrastructure-kubernetes/scripts/get_resources.py <pod-name> -n <namespace>
+```
+
+### describe_node.py - Node status, conditions, and resource usage (direct-only)
 ```bash
 python .claude/skills/infrastructure-kubernetes/scripts/describe_node.py <node-name>
 python .claude/skills/infrastructure-kubernetes/scripts/describe_node.py --all
@@ -105,7 +136,6 @@ python .claude/skills/infrastructure-kubernetes/scripts/describe_node.py --all -
 | CrashLoopBackOff | Container keeps crashing | Check logs for startup errors |
 | FailedScheduling | No node can run pod | Check node resources, taints |
 | Unhealthy | Liveness probe failed | Check probe config, app health |
-| FailedScheduling | No node can run pod | Use `describe_node.py --all` to check node CPU/memory usage |
 
 ## Output Format
 

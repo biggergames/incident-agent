@@ -647,6 +647,12 @@ static_resources:
                                         "name": "GIT_CONFIG_VALUE_0",
                                         "value": "https://github.com/",
                                     },
+                                    # K8s Gateway: route K8s commands to customer clusters
+                                    # via k8s-agent (deployed in customer clusters via Helm)
+                                    {
+                                        "name": "K8S_GATEWAY_URL",
+                                        "value": f"http://incidentfox-k8s-gateway.{self.namespace}.svc.cluster.local:8085",
+                                    },
                                     # RAPTOR knowledge base: internal K8s service (no auth needed)
                                     {
                                         "name": "RAPTOR_URL",

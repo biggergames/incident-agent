@@ -3,10 +3,12 @@
 
 Usage:
     python get_logs.py <pod-name> -n <namespace> [--tail N] [--container NAME]
+    python get_logs.py <pod-name> -n <namespace> --cluster-id <id>
 
 Examples:
     python get_logs.py payment-7f8b9c6d5-x2k4m -n otel-demo --tail 100
     python get_logs.py payment-7f8b9c6d5-x2k4m -n otel-demo --container payment
+    python get_logs.py payment-7f8b9c6d5-x2k4m -n production --cluster-id abc123
 """
 
 import argparse
@@ -14,6 +16,7 @@ import json
 import sys
 from pathlib import Path
 
+from k8s_gateway_client import add_cluster_id_arg, execute_command, is_gateway_mode
 from kubernetes import client
 from kubernetes import config as k8s_config
 from kubernetes.client.rest import ApiException
@@ -58,16 +61,28 @@ def main():
     )
     parser.add_argument("--container", help="Container name (for multi-container pods)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
+    add_cluster_id_arg(parser)
     args = parser.parse_args()
 
     try:
-        core_v1 = get_k8s_client()
-        logs = core_v1.read_namespaced_pod_log(
-            name=args.pod_name,
-            namespace=args.namespace,
-            container=args.container,
-            tail_lines=args.tail,
-        )
+        if is_gateway_mode(args.cluster_id):
+            params = {
+                "pod_name": args.pod_name,
+                "namespace": args.namespace,
+                "tail_lines": args.tail,
+            }
+            if args.container:
+                params["container"] = args.container
+            result = execute_command(args.cluster_id, "get_pod_logs", params)
+            logs = result.get("logs", "")
+        else:
+            core_v1 = get_k8s_client()
+            logs = core_v1.read_namespaced_pod_log(
+                name=args.pod_name,
+                namespace=args.namespace,
+                container=args.container,
+                tail_lines=args.tail,
+            )
 
         if args.json:
             print(
@@ -93,6 +108,9 @@ def main():
 
     except ApiException as e:
         print(f"Error: Kubernetes API error: {e.reason}", file=sys.stderr)
+        sys.exit(1)
+    except RuntimeError as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
