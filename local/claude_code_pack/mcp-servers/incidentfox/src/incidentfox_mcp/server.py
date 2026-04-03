@@ -56,6 +56,7 @@ from .tools import (
     remediation,
     sentry,
     slack,
+    tempo,
     unified_logs,
 )
 
@@ -83,6 +84,7 @@ pagerduty.register_tools(mcp)
 grafana.register_tools(mcp)
 sentry.register_tools(mcp)
 log_analysis.register_tools(mcp)
+tempo.register_tools(mcp)
 
 # Register resources
 register_all_resources(mcp)

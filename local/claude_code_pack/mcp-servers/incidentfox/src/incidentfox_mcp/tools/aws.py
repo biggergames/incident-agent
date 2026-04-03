@@ -27,21 +27,35 @@ class AWSConfigError(Exception):
 
 
 def _get_aws_session(region: str | None = None):
-    """Get boto3 session using default credential chain.
+    """Get boto3 session using credentials from .env file or default chain.
 
-    Supports:
-    - Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    - ~/.incidentfox/.env file
-    - ~/.aws/credentials file
-    - IAM instance profile (for EC2)
-    - IAM task role (for ECS/Fargate)
+    Priority:
+    1. ~/.incidentfox/.env file (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    2. Environment variables
+    3. ~/.aws/credentials file
+    4. IAM instance profile (for EC2)
+    5. IAM task role (for ECS/Fargate)
     """
     region = (
         region or get_env("AWS_REGION") or get_env("AWS_DEFAULT_REGION") or "us-east-1"
     )
 
     try:
-        session = boto3.Session(region_name=region)
+        # Check for explicit credentials in .env file first
+        access_key = get_env("AWS_ACCESS_KEY_ID")
+        secret_key = get_env("AWS_SECRET_ACCESS_KEY")
+        session_token = get_env("AWS_SESSION_TOKEN")
+
+        if access_key and secret_key:
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,
+                region_name=region,
+            )
+        else:
+            session = boto3.Session(region_name=region)
+
         # Test that credentials are available
         session.client("sts").get_caller_identity()
         return session
@@ -248,7 +262,7 @@ def register_tools(mcp: FastMCP):
     def get_cloudwatch_metrics(
         namespace: str,
         metric_name: str,
-        dimensions: str | None = None,
+        dimensions: str | list | None = None,
         hours_ago: int = 1,
         period: int = 300,
         region: str = "us-east-1",
@@ -258,7 +272,7 @@ def register_tools(mcp: FastMCP):
         Args:
             namespace: CloudWatch namespace (e.g., "AWS/EC2", "AWS/Lambda")
             metric_name: Metric name (e.g., "CPUUtilization", "Duration")
-            dimensions: JSON string of dimensions (e.g., '[{"Name": "InstanceId", "Value": "i-xxx"}]')
+            dimensions: Dimensions as JSON string or list (e.g., '[{"Name": "TableName", "Value": "MyTable"}]')
             hours_ago: How many hours back to query (default: 1)
             period: Period in seconds for aggregation (default: 300 = 5 minutes)
             region: AWS region (default: "us-east-1")
@@ -273,10 +287,13 @@ def register_tools(mcp: FastMCP):
             end_time = datetime.utcnow()
             start_time = end_time - timedelta(hours=hours_ago)
 
-            # Parse dimensions if provided
+            # Parse dimensions if provided (accept both string and list)
             dims = []
             if dimensions:
-                dims = json.loads(dimensions)
+                if isinstance(dimensions, str):
+                    dims = json.loads(dimensions)
+                elif isinstance(dimensions, list):
+                    dims = dimensions
 
             response = cloudwatch.get_metric_statistics(
                 Namespace=namespace,

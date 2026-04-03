@@ -2,7 +2,9 @@
   "name": "incidentfox",
   "version": "1.0.0",
   "description": "IncidentFox SRE Investigation Tools - AWS, Kubernetes, Datadog observability and remediation for incident response",
-  "author": "IncidentFox",
+  "author": {
+    "name": "IncidentFox"
+  },
   "homepage": "https://incidentfox.ai",
   "repository": "https://github.com/incidentfox/claude-code-pack",
   "license": "MIT",
@@ -15,34 +17,8 @@
     "observability",
     "troubleshooting"
   ],
-  "skills": [
-    {
-      "path": "skills/investigate"
-    },
-    {
-      "path": "skills/k8s-debug"
-    },
-    {
-      "path": "skills/aws-troubleshoot"
-    },
-    {
-      "path": "skills/log-analysis"
-    },
-    {
-      "path": "skills/sre-principles"
-    }
-  ],
-  "commands": [
-    {
-      "path": "commands/incident.md"
-    },
-    {
-      "path": "commands/metrics.md"
-    },
-    {
-      "path": "commands/remediate.md"
-    }
-  ],
+  "skills": "./skills/",
+  "commands": "./commands/",
   "mcpServers": {
     "incidentfox": {
       "command": "uv",
@@ -65,5 +41,5 @@
       }
     }
   },
-  "hooks": "hooks/hooks.json"
+  "hooks": "./hooks/hooks.json"
 }

@@ -20,6 +20,7 @@ from . import (
     remediation,
     sentry,
     slack,
+    tempo,
     unified_logs,
 )
 
@@ -44,4 +45,5 @@ __all__ = [
     "grafana",
     "sentry",
     "log_analysis",
+    "tempo",
 ]
