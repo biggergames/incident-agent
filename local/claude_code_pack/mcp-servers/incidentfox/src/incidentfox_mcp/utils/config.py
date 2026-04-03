@@ -180,6 +180,18 @@ def get_config_status() -> dict:
                     ),
                 },
             },
+            "tempo": {
+                "configured": is_set("TEMPO_URL")
+                or (
+                    is_set("GRAFANA_URL")
+                    and is_set("GRAFANA_API_KEY")
+                    and is_set("TEMPO_DATASOURCE_UID")
+                ),
+                "variables": {
+                    "TEMPO_URL": get_env("TEMPO_URL") or "NOT SET (optional if using Grafana proxy)",
+                    "TEMPO_DATASOURCE_UID": get_env("TEMPO_DATASOURCE_UID") or "NOT SET",
+                },
+            },
             "grafana": {
                 "configured": is_set("GRAFANA_URL") and is_set("GRAFANA_API_KEY"),
                 "variables": {
